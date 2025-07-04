@@ -1,0 +1,18 @@
+name: n8n STT
+version: "1.2.0"
+slug: n8n_stt
+description: STT via n8n webhook for Wyoming integration
+startup: application
+boot: auto
+init: false
+panel_icon: mdi:microphone
+arch:
+  - amd64
+  - armv7
+  - aarch64
+options:
+  N8N_WEBHOOK_URL: "YOUR_N8N_WEBHOOK_URL_HERE"
+schema:
+  N8N_WEBHOOK_URL: str
+ports:
+  10300/tcp: 10300
