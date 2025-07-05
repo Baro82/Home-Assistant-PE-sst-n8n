@@ -1,62 +1,54 @@
-# --- STADIO 1: COSTRUZIONE (BUILDER STAGE) ---
-# Questo stadio usa l'immagine base fornita da BUILD_FROM (da build.yaml)
-# Qui installeremo tutte le dipendenze Python e prepareremo i tuoi script.
+# --- STADIO 1: PREPARAZIONE DELLE DIPENDENZE (BUILDER STAGE) ---
+# Questo stadio serve solo a scaricare e preparare le dipendenze Python.
+# Non includerà tutti gli strumenti di sviluppo nell'immagine finale.
 ARG BUILD_FROM
-FROM ${BUILD_FROM} AS builder
+FROM ${BUILD_FROM} AS builder_deps
+
+# Installa pip per gestire le dipendenze.
+# Usiamo --no-install-recommends per mantenere l'immagine il più piccola possibile.
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /tmp/deps
+
+# Crea un file requirements.txt temporaneo per le tue dipendenze
+RUN echo "wyoming==1.6.0" > requirements.txt
+RUN echo "httpx==0.28.1" >> requirements.txt
+
+# Scarica le dipendenze in una cartella, senza installarle nel sistema dello stadio builder_deps.
+# Questo le rende disponibili per lo stadio successivo.
+RUN pip3 download -d . -r requirements.txt
+
+# --- STADIO 2: ESECUZIONE (RUNTIME STAGE) ---
+# Questo stadio sarà l'immagine finale del tuo add-on.
+# Usiamo un'immagine Python "slim" per essere il più leggeri possibile.
+FROM python:3.11-slim-bookworm
 
 # Imposta la shell per una gestione degli errori più rigorosa
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Aggiorna i pacchetti e installa Python, pip e jq.
-# Questi strumenti saranno presenti solo in questo stadio.
+# Installazione di jq nello stadio di esecuzione
+# È necessario se run.sh o n8n_stt.py lo utilizzano.
 RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
     jq \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Installa le dipendenze Python.
-# --no-cache-dir riduce la dimensione dei livelli.
-# --break-system-packages è necessario quando si installa in un ambiente di sistema Debian.
-RUN pip3 install --break-system-packages --no-cache-dir \
-    wyoming==1.6.0 \
-    httpx==0.28.1
-
-# Copia i tuoi script nello stadio di costruzione
+# Copia i tuoi script applicativi
 COPY n8n_stt.py .
 COPY run.sh .
 
-# Rendi lo script eseguibile (anche se sarà copiato nello stadio finale)
+# Rendi lo script eseguibile
 RUN chmod +x run.sh
 
-# --- STADIO 2: ESECUZIONE (RUNTIME STAGE) ---
-# Questo stadio sarà l'immagine finale del tuo add-on.
-# Usiamo un'immagine Python "slim" per essere il più leggeri possibile.
-# Questa immagine contiene solo l'essenziale per eseguire applicazioni Python.
-FROM python:3.11-slim-bookworm
-
-# Imposta la shell anche per questo stadio
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-
-# Se il tuo 'run.sh' o 'n8n_stt.py' usano 'jq' a runtime, devi installarlo anche qui.
-# Altrimenti, puoi ometterlo per risparmiare spazio.
-# RUN apt-get update && apt-get install -y jq --no-install-recommends && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-
-# Copia solo ciò che è necessario dallo stadio "builder" allo stadio finale:
-# 1. Il tuo script Python
-# 2. Il tuo script di avvio
-# 3. Le librerie Python installate con pip (ORA IL PERCORSO È CORRETTO: dist-packages)
-COPY --from=builder /app/n8n_stt.py .
-COPY --from=builder /app/run.sh .
-COPY --from=builder /usr/local/lib/python3.11/dist-packages /usr/local/lib/python3.11/dist-packages
-
-# Assicurati che lo script di avvio sia eseguibile anche nello stadio finale
-RUN chmod +x run.sh
+# Copia le dipendenze Python scaricate dallo stadio 'builder_deps'
+# e poi installale direttamente nell'immagine finale.
+COPY --from=builder_deps /tmp/deps /tmp/deps
+RUN pip3 install --no-cache-dir /tmp/deps/*
 
 # Porta esposta
 EXPOSE 10300
