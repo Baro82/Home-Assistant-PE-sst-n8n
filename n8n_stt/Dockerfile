@@ -3,17 +3,19 @@ FROM ${BUILD_FROM}
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        jq \
-        python3 \
-        python3-pip \
-        build-essential \
-        libffi-dev \
-        libssl-dev \
-        rustc \
-        cargo \
-    && rm -rf /var/lib/apt/lists/*
+#RUN apt-get update \
+#    && apt-get install -y --no-install-recommends \
+#        jq \
+#        python3 \
+#        python3-pip \
+#        build-essential \
+#        libffi-dev \
+#        libssl-dev \
+#        rustc \
+#        cargo \
+#    && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y python3 python3-pip jq
 
 WORKDIR /app
 
