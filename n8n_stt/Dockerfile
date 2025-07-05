@@ -50,10 +50,10 @@ WORKDIR /app
 # Copia solo ciò che è necessario dallo stadio "builder" allo stadio finale:
 # 1. Il tuo script Python
 # 2. Il tuo script di avvio
-# 3. Le librerie Python installate con pip (sono in /usr/local/lib/python3.11/site-packages)
+# 3. Le librerie Python installate con pip (ORA IL PERCORSO È CORRETTO: dist-packages)
 COPY --from=builder /app/n8n_stt.py .
 COPY --from=builder /app/run.sh .
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/lib/python3.11/dist-packages /usr/local/lib/python3.11/dist-packages
 
 # Assicurati che lo script di avvio sia eseguibile anche nello stadio finale
 RUN chmod +x run.sh
