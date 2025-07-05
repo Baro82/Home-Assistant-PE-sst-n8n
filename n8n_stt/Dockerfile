@@ -63,7 +63,7 @@ COPY --from=builder /app/run.sh .
 # Ci assicuriamo di copiare sia site-packages che dist-packages per massima compatibilità,
 # dato che la struttura esatta può variare leggermente tra ambienti Debian.
 # In genere, per pacchetti installati da pip, saranno in site-packages.
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+#COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/lib/python3.11/dist-packages /usr/local/lib/python3.11/dist-packages
 
 # Assicurati che lo script di avvio sia eseguibile anche nello stadio finale
