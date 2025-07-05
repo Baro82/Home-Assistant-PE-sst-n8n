@@ -16,7 +16,8 @@ RUN \
         py3-pip=25.1.1-r0 \
         python3=3.12.11-r0 
 
-RUN pip3 install --break-system-packages --no-cache-dir wyoming==1.6.0 httpx==0.28.1
+RUN pip3 install --break-system-packages --no-cache-dir wyoming==1.6.0 httpx==0.28.1 && \
+    apk del .build-dependencies
 
 
 WORKDIR /app
