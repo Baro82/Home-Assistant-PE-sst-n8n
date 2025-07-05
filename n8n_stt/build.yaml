@@ -1,4 +1,7 @@
 ---
 build_from:
-  amd64: ghcr.io/home-assistant/amd64-base-debian:bookworm
-  aarch64: ghcr.io/home-assistant/aarch64-base-debian:bookworm
+  aarch64: arm64v8/alpine:3.22.0
+  amd64: amd64/alpine:3.22.0
+  armhf: arm32v6/alpine:3.22.0
+  armv7: arm32v7/alpine:3.22.0
+  i386: i386/alpine:3.22.0

@@ -1,53 +1,90 @@
-# --- STADIO 1: Preparazione del Codice (solo per copiare i tuoi script) ---
-# Usiamo l'immagine base del tuo build.yaml. Qui non installeremo Python o altre dipendenze.
-ARG BUILD_FROM
-FROM ${BUILD_FROM} AS builder
+ARG BUILD_FROM=alpine:3.22.0
+FROM ${BUILD_FROM}
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+
+# Install base system
+ARG BUILD_ARCH=amd64
+ARG BASHIO_VERSION="v0.17.0"
+ARG S6_OVERLAY_VERSION="3.2.1.0"
+ARG TEMPIO_VERSION="2024.11.2"
+RUN \
+    set -o pipefail \
+    \
+    && apk add --no-cache --virtual .build-dependencies \
+        tar=1.35-r3 \
+        xz=5.8.1-r0 \
+    \
+    && apk add --no-cache \
+        libcrypto3=3.5.1-r0 \
+        libssl3=3.5.1-r0 \
+        musl-utils=1.2.5-r10 \
+        musl=1.2.5-r10 \
+    \
+    && apk add --no-cache \
+        bash=5.2.37-r0 \
+        curl=8.14.1-r1 \
+        jq=1.8.0-r0 \
+        tzdata=2025b-r0 \
+    \
+    && S6_ARCH="${BUILD_ARCH}" \
+    && if [ "${BUILD_ARCH}" = "i386" ]; then S6_ARCH="i686"; \
+    elif [ "${BUILD_ARCH}" = "amd64" ]; then S6_ARCH="x86_64"; \
+    elif [ "${BUILD_ARCH}" = "armv7" ]; then S6_ARCH="arm"; fi \
+    \
+    && curl -L -s "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz" \
+        | tar -C / -Jxpf - \
+    \
+    && curl -L -s "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${S6_ARCH}.tar.xz" \
+        | tar -C / -Jxpf - \
+    \
+    && curl -L -s "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-symlinks-noarch.tar.xz" \
+        | tar -C / -Jxpf - \
+    \
+    && curl -L -s "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-symlinks-arch.tar.xz" \
+        | tar -C / -Jxpf - \
+    \
+    && curl -J -L -o /tmp/bashio.tar.gz \
+        "https://github.com/hassio-addons/bashio/archive/${BASHIO_VERSION}.tar.gz" \
+    && mkdir /tmp/bashio \
+    && tar zxvf \
+        /tmp/bashio.tar.gz \
+        --strip 1 -C /tmp/bashio \
+    \
+    && mv /tmp/bashio/lib /usr/lib/bashio \
+    && ln -s /usr/lib/bashio/bashio /usr/bin/bashio \
+    \
+    && curl -L -s -o /usr/bin/tempio \
+        "https://github.com/home-assistant/tempio/releases/download/${TEMPIO_VERSION}/tempio_${BUILD_ARCH}" \
+    && chmod a+x /usr/bin/tempio \
+    \
+    && apk del --no-cache --purge .build-dependencies \
+    && rm -f -r \
+        /tmp/*
+
+
+RUN apk add --no-cache \
+        python3 \
+        python3-pip
+
+# Copy root filesystem
+COPY rootfs /
+
+# Copy s6-overlay adjustments
+COPY s6-overlay /package/admin/s6-overlay-${S6_OVERLAY_VERSION}/
+
 
 WORKDIR /app
 
-# Copia i tuoi script in questo stadio temporaneo
+RUN pip3 install --break-system-packages --no-cache-dir wyoming==1.6.0 httpx==0.28.1
+
+
 COPY n8n_stt.py .
 COPY run.sh .
 
-# Rendiamo lo script eseguibile qui (la copia lo manterrà eseguibile)
 RUN chmod +x run.sh
 
-# --- STADIO 2: Esecuzione (RUNTIME STAGE) ---
-# Questa sarà l'immagine finale del tuo add-on.
-# È il più piccolo possibile, contenendo solo ciò che è essenziale per il runtime.
-FROM python:3.11-slim-bookworm
-
-# Imposta la shell per una gestione degli errori più rigorosa
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-
-# Installa le dipendenze di sistema necessarie per il runtime:
-# - jq: Necessario perché il tuo script run.sh lo utilizza.
-# - python3-pip: Necessario per installare le dipendenze Python in questo stadio.
-# --no-install-recommends e rm -rf /var/lib/apt/lists/*: Per mantenere l'immagine snella.
-RUN apt-get update && apt-get install -y \
-    jq \
-    python3-pip \
-    --no-install-recommends && \
-    rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-
-# Copia i tuoi script applicativi dallo stadio 'builder'
-COPY --from=builder /app/n8n_stt.py .
-COPY --from=builder /app/run.sh .
-
-# Installa le dipendenze Python direttamente in questo stadio.
-# Questo garantisce che vengano posizionate correttamente per l'interprete Python dell'immagine slim.
-# Non è necessario --break-system-packages qui, dato che siamo su un'immagine Python ufficiale.
-RUN pip3 install --no-cache-dir \
-    wyoming==1.6.0 \
-    httpx==0.28.1
-
-# Assicurati che lo script di avvio sia eseguibile anche nello stadio finale
-RUN chmod +x run.sh
-
-# Porta esposta
 EXPOSE 10300
 
-# Comando di avvio del tuo add-on
 CMD ["./run.sh"]
