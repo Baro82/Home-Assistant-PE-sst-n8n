@@ -19,9 +19,6 @@ RUN \
 RUN pip3 install --break-system-packages --no-cache-dir wyoming==1.6.0 httpx==0.28.1
 
 
-# Copy root filesystem
-COPY rootfs /
-
 WORKDIR /app
 
 
