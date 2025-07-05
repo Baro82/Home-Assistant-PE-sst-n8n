@@ -48,7 +48,7 @@ RUN chmod +x run.sh
 # Copia le dipendenze Python scaricate dallo stadio 'builder_deps'
 # e poi installale direttamente nell'immagine finale.
 COPY --from=builder_deps /tmp/deps /tmp/deps
-RUN pip3 install --break-system-packages --no-cache-dir /tmp/deps/*
+RUN pip3 install --no-cache-dir /tmp/deps/*
 
 # Porta esposta
 EXPOSE 10300
