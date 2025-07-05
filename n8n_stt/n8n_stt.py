@@ -132,7 +132,7 @@ class N8nSTTHandler(AsyncEventHandler):
                     resp.raise_for_status()
                     data = resp.json()
                     
-                    logging.info(f"n8n response: {data}")
+                    logging.debug(f"n8n response: {data}")
                     
                     return data.get("text")
         except httpx.HTTPStatusError as e:
