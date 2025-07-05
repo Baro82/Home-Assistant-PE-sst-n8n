@@ -1,5 +1,5 @@
 name: n8n STT
-version: "1.0.3"
+version: "1.0.4"
 slug: n8n_stt
 description: STT via n8n webhook for Wyoming integration
 startup: application
