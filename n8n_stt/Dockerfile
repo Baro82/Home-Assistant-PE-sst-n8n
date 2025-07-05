@@ -1,7 +1,7 @@
 ARG BUILD_FROM=alpine:3.22.0
 FROM ${BUILD_FROM}
 
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+SHELL ["/bin/ash", "-o", "pipefail", "-c"]
 
 
 # Install base system
